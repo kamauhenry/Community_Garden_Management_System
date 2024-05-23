@@ -2,18 +2,28 @@
 import { v4 as uuidv4 } from "uuid";
 import { Server, StableBTreeMap, Principal } from "azle";
 import express from "express";
+import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
+import bodyParser from "body-parser";
+import moment from "moment";
+import crypto from "crypto";
+
+// Generate a strong, random JWT secret key
+const JWT_SECRET = crypto.randomBytes(64).toString('hex');
 
 // Define the User class to represent users of the platform
 class User {
   id: string;
   name: string;
   email: string;
+  password: string; // Store hashed passwords
   createdAt: Date;
 
-  constructor(name: string, email: string) {
+  constructor(name: string, email: string, password: string) {
     this.id = uuidv4();
     this.name = name;
     this.email = email;
+    this.password = bcrypt.hashSync(password, 8); // Hash password
     this.createdAt = new Date();
   }
 }
@@ -91,93 +101,110 @@ class Event {
 }
 
 // Initialize stable maps for storing garden data
-const usersStorage = StableBTreeMap<string, User>(0);
-const plotsStorage = StableBTreeMap<string, Plot>(1);
-const activitiesStorage = StableBTreeMap<string, Activity>(2);
-const resourcesStorage = StableBTreeMap<string, Resource>(3);
-const eventsStorage = StableBTreeMap<string, Event>(4);
+const usersStorage = new StableBTreeMap<string, User>(0);
+const plotsStorage = new StableBTreeMap<string, Plot>(1);
+const activitiesStorage = new StableBTreeMap<string, Activity>(2);
+const resourcesStorage = new StableBTreeMap<string, Resource>(3);
+const eventsStorage = new StableBTreeMap<string, Event>(4);
 
 // Define the express server
 export default Server(() => {
   const app = express();
-  app.use(express.json());
+  app.use(bodyParser.json());
 
-  // Endpoint for creating a new user
-  app.post("/users", (req, res) => {
-    if (
-      !req.body.name ||
-      typeof req.body.name !== "string" ||
-      !req.body.email ||
-      typeof req.body.email !== "string"
-    ) {
+  // Middleware for error handling
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error(err);
+    res.status(500).json({ error: "An unexpected error occurred." });
+  });
+
+  // Middleware for authentication
+  const authenticateToken = (req: any, res: express.Response, next: express.NextFunction) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    if (!token) return res.sendStatus(401);
+
+    jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
+      if (err) return res.sendStatus(403);
+      req.user = user;
+      next();
+    });
+  };
+
+  // Endpoint for user registration
+  app.post("/register", (req, res) => {
+    const { name, email, password } = req.body;
+
+    if (!name || typeof name !== "string" || !email || typeof email !== "string" || !password || typeof password !== "string") {
       res.status(400).json({
-        error: "Invalid input: Ensure 'name' and 'email' are provided and are strings.",
+        error: "Invalid input: Ensure 'name', 'email', and 'password' are provided and are strings.",
       });
       return;
     }
 
     try {
-      const user = new User(
-        req.body.name,
-        req.body.email
-      );
+      const user = new User(name, email, password);
       usersStorage.insert(user.id, user);
       res.status(201).json({
-        message: "User created successfully",
-        user: user,
+        message: "User registered successfully",
+        user: { id: user.id, name: user.name, email: user.email },
       });
     } catch (error) {
-      console.error("Failed to create user:", error);
+      console.error("Failed to register user:", error);
       res.status(500).json({
-        error: "Server error occurred while creating the user.",
+        error: "Server error occurred while registering the user.",
       });
     }
   });
 
-  // Endpoint for retrieving all users
-  app.get("/users", (req, res) => {
+  // Endpoint for user login
+  app.post("/login", (req, res) => {
+    const { email, password } = req.body;
+
+    if (!email || typeof email !== "string" || !password || typeof password !== "string") {
+      res.status(400).json({
+        error: "Invalid input: Ensure 'email' and 'password' are provided and are strings.",
+      });
+      return;
+    }
+
     try {
-      const users = usersStorage.values();
+      const user = Array.from(usersStorage.values()).find(user => user.email === email);
+      if (!user || !bcrypt.compareSync(password, user.password)) {
+        res.status(401).json({ error: "Invalid email or password" });
+        return;
+      }
+
+      const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '1h' });
       res.status(200).json({
-        message: "Users retrieved successfully",
-        users: users,
+        message: "Login successful",
+        token,
       });
     } catch (error) {
-      console.error("Failed to retrieve users:", error);
+      console.error("Failed to login user:", error);
       res.status(500).json({
-        error: "Server error occurred while retrieving users.",
+        error: "Server error occurred while logging in the user.",
       });
     }
   });
 
   // Endpoint for creating a new plot
-  app.post("/plots", (req, res) => {
-    if (
-      !req.body.userId ||
-      typeof req.body.userId !== "string" ||
-      !req.body.size ||
-      typeof req.body.size !== "string" ||
-      !req.body.location ||
-      typeof req.body.location !== "string" ||
-      !req.body.reservedUntil
-    ) {
+  app.post("/plots", authenticateToken, (req: any, res) => {
+    const { size, location, reservedUntil } = req.body;
+
+    if (!size || typeof size !== "string" || !location || typeof location !== "string" || !reservedUntil || !moment(reservedUntil, moment.ISO_8601, true).isValid()) {
       res.status(400).json({
-        error: "Invalid input: Ensure 'userId', 'size', 'location', and 'reservedUntil' are provided and are of the correct types.",
+        error: "Invalid input: Ensure 'size', 'location', and 'reservedUntil' are provided and are of the correct types.",
       });
       return;
     }
 
     try {
-      const plot = new Plot(
-        req.body.userId,
-        req.body.size,
-        req.body.location,
-        new Date(req.body.reservedUntil)
-      );
+      const plot = new Plot(req.user.userId, size, location, new Date(reservedUntil));
       plotsStorage.insert(plot.id, plot);
       res.status(201).json({
         message: "Plot created successfully",
-        plot: plot,
+        plot,
       });
     } catch (error) {
       console.error("Failed to create plot:", error);
@@ -188,12 +215,12 @@ export default Server(() => {
   });
 
   // Endpoint for retrieving all plots
-  app.get("/plots", (req, res) => {
+  app.get("/plots", authenticateToken, (req, res) => {
     try {
       const plots = plotsStorage.values();
       res.status(200).json({
         message: "Plots retrieved successfully",
-        plots: plots,
+        plots,
       });
     } catch (error) {
       console.error("Failed to retrieve plots:", error);
@@ -204,14 +231,10 @@ export default Server(() => {
   });
 
   // Endpoint for creating a new activity
-  app.post("/activities", (req, res) => {
-    if (
-      !req.body.plotId ||
-      typeof req.body.plotId !== "string" ||
-      !req.body.description ||
-      typeof req.body.description !== "string" ||
-      !req.body.date
-    ) {
+  app.post("/activities", authenticateToken, (req: any, res) => {
+    const { plotId, description, date } = req.body;
+
+    if (!plotId || typeof plotId !== "string" || !description || typeof description !== "string" || !date || !moment(date, moment.ISO_8601, true).isValid()) {
       res.status(400).json({
         error: "Invalid input: Ensure 'plotId', 'description', and 'date' are provided and are of the correct types.",
       });
@@ -219,15 +242,22 @@ export default Server(() => {
     }
 
     try {
-      const activity = new Activity(
-        req.body.plotId,
-        req.body.description,
-        new Date(req.body.date)
-      );
+      const plot = plotsStorage.get(plotId);
+      if (!plot) {
+        res.status(404).json({ error: "Plot not found" });
+        return;
+      }
+
+      if (plot.userId !== req.user.userId) {
+        res.status(403).json({ error: "Unauthorized to add activity to this plot" });
+        return;
+      }
+
+      const activity = new Activity(plotId, description, new Date(date));
       activitiesStorage.insert(activity.id, activity);
       res.status(201).json({
         message: "Activity created successfully",
-        activity: activity,
+        activity,
       });
     } catch (error) {
       console.error("Failed to create activity:", error);
@@ -238,12 +268,12 @@ export default Server(() => {
   });
 
   // Endpoint for retrieving all activities
-  app.get("/activities", (req, res) => {
+  app.get("/activities", authenticateToken, (req, res) => {
     try {
       const activities = activitiesStorage.values();
       res.status(200).json({
         message: "Activities retrieved successfully",
-        activities: activities,
+        activities,
       });
     } catch (error) {
       console.error("Failed to retrieve activities:", error);
@@ -254,15 +284,10 @@ export default Server(() => {
   });
 
   // Endpoint for creating a new resource
-  app.post("/resources", (req, res) => {
-    if (
-      !req.body.name ||
-      typeof req.body.name !== "string" ||
-      !req.body.quantity ||
-      typeof req.body.quantity !== "number" ||
-      !req.body.available ||
-      typeof req.body.available !== "boolean"
-    ) {
+  app.post("/resources", authenticateToken, (req, res) => {
+    const { name, quantity, available } = req.body;
+
+    if (!name || typeof name !== "string" || !quantity || typeof quantity !== "number" || available === undefined || typeof available !== "boolean") {
       res.status(400).json({
         error: "Invalid input: Ensure 'name', 'quantity', and 'available' are provided and are of the correct types.",
       });
@@ -270,15 +295,11 @@ export default Server(() => {
     }
 
     try {
-      const resource = new Resource(
-        req.body.name,
-        req.body.quantity,
-        req.body.available
-      );
+      const resource = new Resource(name, quantity, available);
       resourcesStorage.insert(resource.id, resource);
       res.status(201).json({
         message: "Resource created successfully",
-        resource: resource,
+        resource,
       });
     } catch (error) {
       console.error("Failed to create resource:", error);
@@ -289,12 +310,12 @@ export default Server(() => {
   });
 
   // Endpoint for retrieving all resources
-  app.get("/resources", (req, res) => {
+  app.get("/resources", authenticateToken, (req, res) => {
     try {
       const resources = resourcesStorage.values();
       res.status(200).json({
         message: "Resources retrieved successfully",
-        resources: resources,
+        resources,
       });
     } catch (error) {
       console.error("Failed to retrieve resources:", error);
@@ -305,16 +326,10 @@ export default Server(() => {
   });
 
   // Endpoint for creating a new event
-  app.post("/events", (req, res) => {
-    if (
-      !req.body.title ||
-      typeof req.body.title !== "string" ||
-      !req.body.description ||
-      typeof req.body.description !== "string" ||
-      !req.body.date ||
-      !req.body.location ||
-      typeof req.body.location !== "string"
-    ) {
+  app.post("/events", authenticateToken, (req, res) => {
+    const { title, description, date, location } = req.body;
+
+    if (!title || typeof title !== "string" || !description || typeof description !== "string" || !date || !moment(date, moment.ISO_8601, true).isValid() || !location || typeof location !== "string") {
       res.status(400).json({
         error: "Invalid input: Ensure 'title', 'description', 'date', and 'location' are provided and are of the correct types.",
       });
@@ -322,16 +337,11 @@ export default Server(() => {
     }
 
     try {
-      const event = new Event(
-        req.body.title,
-        req.body.description,
-        new Date(req.body.date),
-        req.body.location
-      );
+      const event = new Event(title, description, new Date(date), location);
       eventsStorage.insert(event.id, event);
       res.status(201).json({
         message: "Event created successfully",
-        event: event,
+        event,
       });
     } catch (error) {
       console.error("Failed to create event:", error);
@@ -342,12 +352,12 @@ export default Server(() => {
   });
 
   // Endpoint for retrieving all events
-  app.get("/events", (req, res) => {
+  app.get("/events", authenticateToken, (req, res) => {
     try {
       const events = eventsStorage.values();
       res.status(200).json({
         message: "Events retrieved successfully",
-        events: events,
+        events,
       });
     } catch (error) {
       console.error("Failed to retrieve events:", error);
