@@ -1,12 +1,12 @@
 {
   "canisters": {
-    "book_swap": {
+    "community_garden_management": {
       "type": "custom",
       "main": "src/index.ts",
       "candid": "src/index.did",
       "candid_gen": "http",
-      "build": "npx azle book_swap",
-      "wasm": ".azle/book_swap/book_swap.wasm",
+      "build": "npx azle community_garden_management",
+      "wasm": ".azle/community_garden_management/community_garden_management.wasm",
       "gzip": true,
       "metadata": [
         {
