@@ -104,7 +104,6 @@ brew install podman
 }
 
 
-
 where community_garden_management is the name of the canister.
 
 6. Create a package.json with the next content and run npm i:
