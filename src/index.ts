@@ -1,4 +1,3 @@
-// Import necessary libraries
 import { v4 as uuidv4 } from "uuid";
 import { Server, StableBTreeMap, Principal } from "azle";
 import express from "express";
@@ -102,6 +101,13 @@ export default Server(() => {
   const app = express();
   app.use(express.json());
 
+  // Helper function to handle not found entities
+  const handleNotFound = (res: express.Response, entity: string) => {
+    res.status(404).json({
+      error: `${entity} not found.`,
+    });
+  };
+
   // Endpoint for creating a new user
   app.post("/users", (req, res) => {
     if (
@@ -117,10 +123,7 @@ export default Server(() => {
     }
 
     try {
-      const user = new User(
-        req.body.name,
-        req.body.email
-      );
+      const user = new User(req.body.name, req.body.email);
       usersStorage.insert(user.id, user);
       res.status(201).json({
         message: "User created successfully",
@@ -146,6 +149,66 @@ export default Server(() => {
       console.error("Failed to retrieve users:", error);
       res.status(500).json({
         error: "Server error occurred while retrieving users.",
+      });
+    }
+  });
+
+  // Endpoint for updating a user
+  app.put("/users/:id", (req, res) => {
+    const { id } = req.params;
+    const { name, email } = req.body;
+
+    if (
+      (name && typeof name !== "string") ||
+      (email && typeof email !== "string")
+    ) {
+      res.status(400).json({
+        error: "Invalid input: Ensure 'name' and 'email' are strings.",
+      });
+      return;
+    }
+
+    try {
+      const user = usersStorage.get(id);
+      if (!user) {
+        handleNotFound(res, "User");
+        return;
+      }
+
+      user.name = name || user.name;
+      user.email = email || user.email;
+      usersStorage.insert(id, user);
+      res.status(200).json({
+        message: "User updated successfully",
+        user: user,
+      });
+    } catch (error) {
+      console.error("Failed to update user:", error);
+      res.status(500).json({
+        error: "Server error occurred while updating the user.",
+      });
+    }
+  });
+
+  // Endpoint for deleting a user
+  app.delete("/users/:id", (req, res) => {
+    const { id } = req.params;
+
+    try {
+      const user = usersStorage.get(id);
+      if (!user) {
+        handleNotFound(res, "User");
+        return;
+      }
+
+      usersStorage.remove(id);
+      res.status(200).json({
+        message: "User deleted successfully",
+      });
+    } catch (error) {
+      console.error("Failed to delete user:", error);
+      res.status(500).json({
+        error: "Server error occurred while deleting the user.",
       });
     }
   });
@@ -203,6 +266,68 @@ export default Server(() => {
     }
   });
 
+  // Endpoint for updating a plot
+  app.put("/plots/:id", (req, res) => {
+    const { id } = req.params;
+    const { size, location, reservedUntil } = req.body;
+
+    if (
+      (size && typeof size !== "string") ||
+      (location && typeof location !== "string") ||
+      (reservedUntil && isNaN(Date.parse(reservedUntil)))
+    ) {
+      res.status(400).json({
+        error: "Invalid input: Ensure 'size', 'location', and 'reservedUntil' are of the correct types.",
+      });
+      return;
+    }
+
+    try {
+      const plot = plotsStorage.get(id);
+      if (!plot) {
+        handleNotFound(res, "Plot");
+        return;
+      }
+
+      plot.size = size || plot.size;
+      plot.location = location || plot.location;
+      plot.reservedUntil = reservedUntil ? new Date(reservedUntil) : plot.reservedUntil;
+      plotsStorage.insert(id, plot);
+      res.status(200).json({
+        message: "Plot updated successfully",
+        plot: plot,
+      });
+    } catch (error) {
+      console.error("Failed to update plot:", error);
+      res.status(500).json({
+        error: "Server error occurred while updating the plot.",
+      });
+    }
+  });
+
+  // Endpoint for deleting a plot
+  app.delete("/plots/:id", (req, res) => {
+    const { id } = req.params;
+
+    try {
+      const plot = plotsStorage.get(id);
+      if (!plot) {
+        handleNotFound(res, "Plot");
+        return;
+      }
+
+      plotsStorage.remove(id);
+      res.status(200).json({
+        message: "Plot deleted successfully",
+      });
+    } catch (error) {
+      console.error("Failed to delete plot:", error);
+      res.status(500).json({
+        error: "Server error occurred while deleting the plot.",
+      });
+    }
+  });
+
   // Endpoint for creating a new activity
   app.post("/activities", (req, res) => {
     if (
@@ -249,6 +374,66 @@ export default Server(() => {
       console.error("Failed to retrieve activities:", error);
       res.status(500).json({
         error: "Server error occurred while retrieving activities.",
+      });
+    }
+  });
+
+  // Endpoint for updating an activity
+  app.put("/activities/:id", (req, res) => {
+    const { id } = req.params;
+    const { description, date } = req.body;
+
+    if (
+      (description && typeof description !== "string") ||
+      (date && isNaN(Date.parse(date)))
+    ) {
+      res.status(400).json({
+        error: "Invalid input: Ensure 'description' and 'date' are of the correct types.",
+      });
+      return;
+    }
+
+    try {
+      const activity = activitiesStorage.get(id);
+      if (!activity) {
+        handleNotFound(res, "Activity");
+        return;
+      }
+
+      activity.description = description || activity.description;
+      activity.date = date ? new Date(date) : activity.date;
+      activitiesStorage.insert(id, activity);
+      res.status(200).json({
+        message: "Activity updated successfully",
+        activity: activity,
+      });
+    } catch (error) {
+      console.error("Failed to update activity:", error);
+      res.status(500).json({
+        error: "Server error occurred while updating the activity.",
+      });
+    }
+  });
+
+  // Endpoint for deleting an activity
+  app.delete("/activities/:id", (req, res) => {
+    const { id } = req.params;
+
+    try {
+      const activity = activitiesStorage.get(id);
+      if (!activity) {
+        handleNotFound(res, "Activity");
+        return;
+      }
+
+      activitiesStorage.remove(id);
+      res.status(200).json({
+        message: "Activity deleted successfully",
+      });
+    } catch (error) {
+      console.error("Failed to delete activity:", error);
+      res.status(500).json({
+        error: "Server error occurred while deleting the activity.",
       });
     }
   });
@@ -304,6 +489,68 @@ export default Server(() => {
     }
   });
 
+  // Endpoint for updating a resource
+  app.put("/resources/:id", (req, res) => {
+    const { id } = req.params;
+    const { name, quantity, available } = req.body;
+
+    if (
+      (name && typeof name !== "string") ||
+      (quantity && typeof quantity !== "number") ||
+      (available !== undefined && typeof available !== "boolean")
+    ) {
+      res.status(400).json({
+        error: "Invalid input: Ensure 'name', 'quantity', and 'available' are of the correct types.",
+      });
+      return;
+    }
+
+    try {
+      const resource = resourcesStorage.get(id);
+      if (!resource) {
+        handleNotFound(res, "Resource");
+        return;
+      }
+
+      resource.name = name || resource.name;
+      resource.quantity = quantity || resource.quantity;
+      resource.available = available !== undefined ? available : resource.available;
+      resourcesStorage.insert(id, resource);
+      res.status(200).json({
+        message: "Resource updated successfully",
+        resource: resource,
+      });
+    } catch (error) {
+      console.error("Failed to update resource:", error);
+      res.status(500).json({
+        error: "Server error occurred while updating the resource.",
+      });
+    }
+  });
+
+  // Endpoint for deleting a resource
+  app.delete("/resources/:id", (req, res) => {
+    const { id } = req.params;
+
+    try {
+      const resource = resourcesStorage.get(id);
+      if (!resource) {
+        handleNotFound(res, "Resource");
+        return;
+      }
+
+      resourcesStorage.remove(id);
+      res.status(200).json({
+        message: "Resource deleted successfully",
+      });
+    } catch (error) {
+      console.error("Failed to delete resource:", error);
+      res.status(500).json({
+        error: "Server error occurred while deleting the resource.",
+      });
+    }
+  });
+
   // Endpoint for creating a new event
   app.post("/events", (req, res) => {
     if (
@@ -353,6 +600,70 @@ export default Server(() => {
       console.error("Failed to retrieve events:", error);
       res.status(500).json({
         error: "Server error occurred while retrieving events.",
+      });
+    }
+  });
+
+  // Endpoint for updating an event
+  app.put("/events/:id", (req, res) => {
+    const { id } = req.params;
+    const { title, description, date, location } = req.body;
+
+    if (
+      (title && typeof title !== "string") ||
+      (description && typeof description !== "string") ||
+      (date && isNaN(Date.parse(date))) ||
+      (location && typeof location !== "string")
+    ) {
+      res.status(400).json({
+        error: "Invalid input: Ensure 'title', 'description', 'date', and 'location' are of the correct types.",
+      });
+      return;
+    }
+
+    try {
+      const event = eventsStorage.get(id);
+      if (!event) {
+        handleNotFound(res, "Event");
+        return;
+      }
+
+      event.title = title || event.title;
+      event.description = description || event.description;
+      event.date = date ? new Date(date) : event.date;
+      event.location = location || event.location;
+      eventsStorage.insert(id, event);
+      res.status(200).json({
+        message: "Event updated successfully",
+        event: event,
+      });
+    } catch (error) {
+      console.error("Failed to update event:", error);
+      res.status(500).json({
+        error: "Server error occurred while updating the event.",
+      });
+    }
+  });
+
+  // Endpoint for deleting an event
+  app.delete("/events/:id", (req, res) => {
+    const { id } = req.params;
+
+    try {
+      const event = eventsStorage.get(id);
+      if (!event) {
+        handleNotFound(res, "Event");
+        return;
+      }
+
+      eventsStorage.remove(id);
+      res.status(200).json({
+        message: "Event deleted successfully",
+      });
+    } catch (error) {
+      console.error("Failed to delete event:", error);
+      res.status(500).json({
+        error: "Server error occurred while deleting the event.",
       });
     }
   });
