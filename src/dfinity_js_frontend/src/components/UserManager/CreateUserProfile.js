@@ -4,24 +4,23 @@ import { createUserProfile } from "../../utils/communityGarden";
 const CreateUserProfile = ({ fetchUserProfile }) => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [phoneNumber, setphoneNumber] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
 
   const isFormFilled = () => name && email && phoneNumber;
 
-  const handleSubmit = async () => {
-    e.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault(); // Prevent the default form submission
     try {
       const user = {
         name,
         email,
         phoneNumber,
       };
-      await createUserProfile(user).then((res) => {
-        console.log(res);
-        fetchUserProfile();
-      });
+      const res = await createUserProfile(user); // Wait for the promise to resolve
+      console.log(res);
+      fetchUserProfile(); // Fetch the user profile after successful creation
     } catch (error) {
-      console.log(error);
+      console.log("Failed to create user profile:", error);
     }
   };
 
@@ -37,7 +36,7 @@ const CreateUserProfile = ({ fetchUserProfile }) => {
                     <h2 className="text-uppercase text-center mb-5">
                       Create an account
                     </h2>
-
+                    
                     <form onSubmit={handleSubmit}>
                       <div className="form-outline mb-4">
                         <label className="form-label" htmlFor="form3Example1cg">
@@ -47,6 +46,7 @@ const CreateUserProfile = ({ fetchUserProfile }) => {
                           type="text"
                           id="form3Example1cg"
                           className="form-control form-control-lg"
+                          value={name}
                           onChange={(e) => {
                             setName(e.target.value);
                           }}
@@ -61,6 +61,7 @@ const CreateUserProfile = ({ fetchUserProfile }) => {
                           type="email"
                           id="form3Example3cg"
                           className="form-control form-control-lg"
+                          value={email}
                           onChange={(e) => {
                             setEmail(e.target.value);
                           }}
@@ -69,14 +70,15 @@ const CreateUserProfile = ({ fetchUserProfile }) => {
 
                       <div className="form-outline mb-4">
                         <label className="form-label" htmlFor="form3Example4cg">
-                          Your phoneNumber
+                          Your Phone Number
                         </label>
                         <input
                           type="text"
                           id="form3Example4cg"
                           className="form-control form-control-lg"
+                          value={phoneNumber}
                           onChange={(e) => {
-                            setphoneNumber(e.target.value);
+                            setPhoneNumber(e.target.value);
                           }}
                         />
                       </div>

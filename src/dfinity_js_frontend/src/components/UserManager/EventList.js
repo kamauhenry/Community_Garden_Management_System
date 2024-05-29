@@ -10,7 +10,7 @@ const EventList = ({ events, onAdd }) => {
           style={{
             borderRadius: "15px",
             backgroundColor: "#f8f9fa",
-            minWidth: "600px",
+            minWidth: "650px",
           }}
         >
           <h2 className="text-center mb-4">Community Events</h2>
