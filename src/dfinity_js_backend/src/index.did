@@ -1,0 +1,14 @@
+service: () -> {
+    createActivity: (record {plotId:text; date:text; description:text}) -> (variant {Ok:record {id:text; plotId:text; date:text; createdAt:text; description:text}; Err:variant {Error:text; InvalidPayload:text; NotFound:text; Success:text}});
+    createEvent: (record {title:text; date:text; description:text; location:text}) -> (variant {Ok:record {id:text; title:text; date:text; createdAt:text; description:text; location:text}; Err:variant {Error:text; InvalidPayload:text; NotFound:text; Success:text}});
+    createPlot: (record {userId:text; size:text; reservedUntil:text; location:text}) -> (variant {Ok:record {id:text; userId:text; createdAt:text; size:text; reservedUntil:text; location:text}; Err:variant {Error:text; InvalidPayload:text; NotFound:text; Success:text}});
+    createResource: (record {name:text; available:bool; quantity:nat64}) -> (variant {Ok:record {id:text; name:text; createdAt:text; available:bool; quantity:nat64}; Err:variant {Error:text; InvalidPayload:text; NotFound:text; Success:text}});
+    createUserProfile: (record {name:text; email:text; phoneNumber:text}) -> (variant {Ok:record {owner:principal; userId:text; name:text; createdAt:text; email:text; phoneNumber:text}; Err:variant {Error:text; InvalidPayload:text; NotFound:text; Success:text}});
+    getAllActivities: () -> (vec record {id:text; plotId:text; date:text; createdAt:text; description:text}) query;
+    getAllEvents: () -> (vec record {id:text; title:text; date:text; createdAt:text; description:text; location:text}) query;
+    getAllPlots: () -> (vec record {id:text; userId:text; createdAt:text; size:text; reservedUntil:text; location:text}) query;
+    getAllResources: () -> (vec record {id:text; name:text; createdAt:text; available:bool; quantity:nat64}) query;
+    getUserProfile: (text) -> (variant {Ok:record {owner:principal; userId:text; name:text; createdAt:text; email:text; phoneNumber:text}; Err:variant {Error:text; InvalidPayload:text; NotFound:text; Success:text}}) query;
+    getUserProfileByOwner: () -> (variant {Ok:record {owner:principal; userId:text; name:text; createdAt:text; email:text; phoneNumber:text}; Err:variant {Error:text; InvalidPayload:text; NotFound:text; Success:text}}) query;
+    updateUserProfile: (record {name:text; email:text; phoneNumber:text}) -> (variant {Ok:record {owner:principal; userId:text; name:text; createdAt:text; email:text; phoneNumber:text}; Err:variant {Error:text; InvalidPayload:text; NotFound:text; Success:text}});
+}

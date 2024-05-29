@@ -1,181 +1,63 @@
 # Community Garden Management System
 
-The Community Garden Management System is a web application designed to facilitate the management of community gardens. It allows users to reserve plots, track gardening activities, schedule maintenance tasks, and share resources. The platform includes features for user profiles, plot reservations, activity tracking, resource sharing, and community events.
+The Community Garden Management System is designed to facilitate the management of community gardens. It allows users to reserve plots, track gardening activities, schedule maintenance tasks, and share resources. The platform includes features for user profiles, plot reservations, activity tracking, resource sharing, and community events.
+
+
+## Things to be explained in the course:
+1. What is Ledger? More details here: https://internetcomputer.org/docs/current/developer-docs/integrations/ledger/
+2. What is Internet Identity? More details here: https://internetcomputer.org/internet-identity
+3. What is Principal, Identity, Address? https://internetcomputer.org/internet-identity | https://yumimarketplace.medium.com/whats-the-difference-between-principal-id-and-account-id-3c908afdc1f9
+4. Canister-to-canister communication and how multi-canister development is done? https://medium.com/icp-league/explore-backend-multi-canister-development-on-ic-680064b06320
+
+## How to deploy canisters implemented in the course
+
+### Ledger canister
+`./deploy-local-ledger.sh` - deploys a local Ledger canister. IC works differently when run locally so there is no default network token available and you have to deploy it yourself. Remember that it's not a token like ERC-20 in Ethereum, it's a native token for ICP, just deployed separately.
+This canister is described in the `dfx.json`:
+```
+	"ledger_canister": {
+  	"type": "custom",
+  	"candid": "https://raw.githubusercontent.com/dfinity/ic/928caf66c35627efe407006230beee60ad38f090/rs/rosetta-api/icp_ledger/ledger.did",
+  	"wasm": "https://download.dfinity.systems/ic/928caf66c35627efe407006230beee60ad38f090/canisters/ledger-canister.wasm.gz",
+  	"remote": {
+    	"id": {
+      	"ic": "ryjl3-tyaaa-aaaaa-aaaba-cai"
+    	}
+  	}
+	}
+```
+`remote.id.ic` - that is the principal of the Ledger canister and it will be available by this principal when you work with the ledger.
+
+Also, in the scope of this script, a minter identity is created which can be used for minting tokens
+for the testing purposes.
+Additionally, the default identity is pre-populated with 1000_000_000_000 e8s which is equal to 10_000 * 10**8 ICP.
+The decimals value for ICP is 10**8.
+
+List identities:
+`dfx identity list`
+
+Switch to the minter identity:
+`dfx identity use minter`
+
+Transfer ICP:
+`dfx ledger transfer <ADDRESS>  --memo 0 --icp 100 --fee 0`
+where:
+ - `--memo` is some correlation id that can be set to identify some particular transactions (we use that in the marketplace canister).
+ - `--icp` is the transfer amount
+ - `--fee` is the transaction fee. In this case it's 0 because we make this transfer as the minter idenity thus this transaction is of type MINT, not TRANSFER.
+ - `<ADDRESS>` is the address of the recipient. To get the address from the principal, you can use the helper function from the marketplace canister - `getAddressFromPrincipal(principal: Principal)`, it can be called via the Candid UI.
+
+
+### Internet identity canister
+
+`dfx deploy internet_identity` - that is the canister that handles the authentication flow. Once it's deployed, the `js-agent` library will be talking to it to register identities. There is UI that acts as a wallet where you can select existing identities
+or create a new one.
+
+### Marketplace canister
+
+`dfx deploy dfinity_js_backend` - deploys the marketplace canister where the business logic is implemented.
+Basically, it implements functions like add, view, update, delete, and buy products + a set of helper functions.
+
+Do not forget to run `dfx generate dfinity_js_backend` anytime you add/remove functions in the canister or when you change the signatures.
+Otherwise, these changes won't be reflected in IDL's and won't work when called using the JS agent.
 
-## Getting started
-
-To get started developing in the browser, click this button:
-
-[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/dacadeorg/icp-message-board-contract)
-
-If you rather want to use GitHub Codespaces, click this button instead:
-
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/dacadeorg/icp-message-board-contract?quickstart=1)
-
-*NOTE*: After dfx deploy, when developing in GitHub Codespaces, run ./canister_urls.py and click the links that are shown there.
-
-If you prefer running VS Code locally and not in the browser, click "Codespaces: ..." or "Gitpod" in the bottom left corner and select "Open in VS Code" in the menu that appears.
-If prompted, proceed by installing the recommended plugins for VS Code.
-
-To develop fully locally, first install [Docker](https://www.docker.com/get-started/) and [VS Code](https://code.visualstudio.com/) and start them on your machine.
-Next, click the following button to open the dev container locally:
-
-[![Open locally in Dev Containers](https://img.shields.io/static/v1?label=Dev%20Containers&message=Open&color=blue&logo=visualstudiocode)](https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https://github.com/dacadeorg/icp-message-board-contract)
-
-## Prerequisities
-
-1. Install nvm:
-
-- curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
-
-2. Switch to node v20:
-
-- nvm install 20
-- nvm use 20
-
-3. Install build dependencies:
-
-## For Ubuntu and WSL2
-
-
-sudo apt-get install podman
-
-
-## For macOS:
-
-
-xcode-select --install
-brew install podman
-
-
-4. Install dfx
-
-- DFX_VERSION=0.16.1 sh -ci "$(curl -fsSL https://sdk.dfinity.org/install.sh)"
-
-5. Add dfx to PATH:
-
-- echo 'export PATH="$PATH:$HOME/bin"' >> "$HOME/.bashrc"
-
-6. Create a project structure:
-
-- create src dir
-- create index.ts in the src dir
-- create tsconfig.json in the root directory with the next content
-
-
-{
-    "compilerOptions": {
-        "allowSyntheticDefaultImports": true,
-        "strictPropertyInitialization": false,
-        "strict": true,
-        "target": "ES2020",
-        "moduleResolution": "node",
-        "allowJs": true,
-        "outDir": "HACK_BECAUSE_OF_ALLOW_JS"
-    }
-}
-
-
-- create dfx.json with the next content
-
-
-{
-  "canisters": {
-    "community_garden_management": {
-      "type": "custom",
-      "main": "src/index.ts",
-      "candid": "src/index.did",
-      "candid_gen": "http",
-      "build": "npx azle community_garden_management",
-      "wasm": ".azle/community_garden_management/community_garden_management.wasm",
-      "gzip": true,
-      "metadata": [
-        {
-            "name": "candid:service",
-            "path": "src/index.did"
-        },
-        {
-            "name": "cdk:name",
-            "content": "azle"
-        }
-    ]
-    }
-  }
-}
-
-
-where community_garden_management is the name of the canister.
-
-6. Create a package.json with the next content and run npm i:
-
-
-{
-  "name": "community_garden_management",
-  "version": "0.1.0",
-  "description": "Internet Computer message board application",
-  "dependencies": {
-    "@dfinity/agent": "^0.21.4",
-    "@dfinity/candid": "^0.21.4",
-    "azle": "^0.21.1",
-    "express": "^4.18.2",
-    "uuid": "^9.0.1"
-  },
-  "engines": {
-    "node": "^20"
-  },
-  "devDependencies": {
-    "@types/express": "^4.17.21"
-  }
-}
-
-
-
-7. Run a local replica
-
-- dfx start --host 127.0.0.1:8000
-
-#### IMPORTANT NOTE
-
-If you make any changes to the StableBTreeMap structure like change datatypes for keys or values, changing size of the key or value, you need to restart dfx with the --clean flag. StableBTreeMap is immutable and any changes to it's configuration after it's been initialized are not supported.
-
-- dfx start --host 127.0.0.1:8000 --clean
-
-8. Deploy a canister
-
-- dfx deploy
-  Also, if you are building an HTTP-based canister and would like your canister to autoreload on file changes (DO NOT deploy to mainnet with autoreload enabled):
-
-
-AZLE_AUTORELOAD=true dfx deploy
-
-
-9. Stop a local replica
-
-- dfx stop
-
-## Interaction with the canister
-
-When a canister is deployed, dfx deploy produces a link to the Candid interface in the shell output.
-
-Candid interface provides a simple UI where you can interact with functions in the canister.
-
-On the other hand, you can interact with the canister using dfx via CLI:
-
-### get canister id:
-
-- dfx canister id <CANISTER_NAME>
-  Example:
-- dfx canister id community_garden_management
-  Response:
-
-
-bkyz2-fmaaa-aaaaa-qaaaq-cai
-
-
-Now, the URL of your canister should like this:
-
-
-http://bkyz2-fmaaa-aaaaa-qaaaq-cai.localhost:8000
-
-
-With this URL, you can interact with the canister using an HTTP client of your choice.

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Community Garden</title>
+    <base href="/" />
+    <link type="text/css" rel="stylesheet" href="main.css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          screens: { md: { max: "1050px" }, sm: { max: "550px" } },
+          extend: {
+            colors: {
+              white: { A700: "#ffffff" },
+              gray: {
+                50: "#fbfbfb",
+                100: "#f3f4f6",
+                300: "#dee1e6",
+                500: "#9095a0",
+                700: "#565e6c",
+                900: "#171a1f",
+                "900_01": "#1d1d1d",
+                "50_01": "#f8f9fa",
+                "100_01": "#f5f2fd",
+                "100_02": "#f1f4fd",
+                "100_03": "#fef6f1",
+                "900_03": "#1d2128",
+              },
+              cyan: {
+                50: "#c8f9ff",
+                100: "#a6f5ff",
+                500: "#00bdd6",
+                A200: "#1ce5ff",
+                "100_66": "#a6f5ff66",
+              },
+              light_blue: { 50: "#ebfdff" },
+              teal: { 700: "#006d7c", 900: "#003138" },
+              blue_gray: {
+                200: "#bcc1ca",
+                500: "#6e7787",
+                800: "#424955",
+                900: "#323842",
+              },
+              deep_orange: { 100: "#f9d8c0" },
+              deep_purple: { 100: "#d9cbf6", A200: "#8353e2" },
+              red: { 100: "#f5cbcb" },
+            },
+            boxShadow: {
+              xs: "0px 3px 6px 0px #120f281e",
+              sm: "0px 4px 9px 0px #00bdd61c",
+              md: "0px 17px 35px 0px #00bdd63d",
+              lg: "0px 2px 5px 0px #171a1f16",
+              xl: "0px 8px 17px 0px #171a1f26",
+              "2xl": "0px 0px 1px 0px #171a1f11",
+              "3xl": "0px 17px 35px 0px #1ce5ff3d",
+            },
+            fontFamily: { inter: "Inter", epilogue: "Epilogue" },
+          },
+        },
+      };
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
